@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>アグリコラ Online Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            overscroll-behavior-y: none;
+            touch-action: manipulation;
+        }
+
+        .card-transition {
+            transition: all 0.15s ease-out;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* ローディングスピナー */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 h-[100dvh] flex flex-col text-slate-800 overflow-hidden">
+
+    <!-- ■■■ ロビー画面 (初期表示) ■■■ -->
+    <div id="view-lobby"
+        class="fixed inset-0 z-50 bg-slate-100 flex flex-col items-center justify-center p-4 transition-opacity duration-300">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-8 text-center">
+            <div>
+                <h1 class="text-3xl font-black text-green-700 mb-2">Agricola Tracker</h1>
+                <p class="text-slate-500 font-bold">オンライン・マルチプレイ</p>
+            </div>
+
+            <div id="auth-loading" class="flex flex-col items-center justify-center space-y-4">
+                <div class="spinner"></div>
+                <p class="text-slate-400 text-sm font-bold">サーバー接続中...</p>
+            </div>
+
+            <div id="lobby-controls" class="hidden space-y-6">
+                <!-- ルーム作成 -->
+                <button onclick="createRoom()"
+                    class="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transform active:scale-95 transition-all text-lg flex items-center justify-center gap-2">
+                    <span>🏠 新しいルームを作成</span>
+                </button>
+
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold">または</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <!-- ルーム参加 -->
+                <div class="space-y-3">
+                    <label class="block text-left text-sm font-bold text-slate-600">参加コード (4桁)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="room-code-input" maxlength="4" placeholder="1234"
+                            class="flex-1 bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-2xl font-black text-center tracking-widest focus:outline-none focus:border-green-500 text-slate-700 uppercase">
+                        <button onclick="joinRoom()"
+                            class="flex-none px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow active:scale-95 transition-all">
+                            参加
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ■■■ ゲーム画面 (ルーム入室後) ■■■ -->
+    <div id="view-game" class="hidden flex-col h-full w-full">
+        <!-- ヘッダー -->
+        <header id="top-panel"
+            class="bg-white shadow-sm z-30 border-b border-green-200 flex-none transition-colors duration-500 pb-safe">
+            <div class="max-w-7xl mx-auto px-3 py-2 flex items-center justify-between gap-2 md:gap-4">
+
+                <div class="flex items-center gap-2 md:gap-6 flex-shrink-0">
+                    <!-- ルーム情報表示 -->
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
+                            <span>Room:</span>
+                            <span id="room-code-display"
+                                class="bg-slate-100 px-1 rounded text-slate-600 select-all font-mono">----</span>
+                        </div>
+                        <h1 class="hidden lg:block text-xl font-bold text-green-900">アグリコラ</h1>
+                    </div>
+
+                    <div
+                        class="flex items-center gap-2 md:gap-3 bg-slate-50 rounded-lg px-2 md:px-3 py-1 border border-slate-200">
+                        <span class="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Round</span>
+                        <div class="flex items-baseline gap-0.5 md:gap-1">
+                            <span id="current-round-display"
+                                class="text-2xl md:text-3xl font-black text-green-800 leading-none">1</span>
+                            <span class="text-xs md:text-sm text-slate-400 font-bold">/ 14</span>
+                        </div>
+                    </div>
+
+                    <div id="round-timeline"
+                        class="flex items-center gap-1 overflow-x-auto px-1 max-w-[100px] sm:max-w-[200px] xl:max-w-none no-scrollbar">
+                    </div>
+                </div>
+
+                <div id="harvest-alert"
+                    class="hidden flex-1 text-center bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs md:text-sm font-bold animate-pulse mx-1 truncate">
+                    <span class="md:hidden">🌾 収穫!</span>
+                    <span class="hidden md:inline">🌾 収穫ラウンドです！</span>
+                </div>
+
+                <div class="flex items-center gap-2 md:gap-3 flex-none">
+                    <!-- 参加者インジケーター -->
+                    <div id="players-list" class="flex -space-x-1 overflow-hidden">
+                        <!-- JSで生成 -->
+                    </div>
+
+                    <button id="next-round-btn" onclick="handleMainButton()"
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 md:px-6 rounded-full shadow hover:shadow-lg transform active:scale-95 transition-all flex items-center gap-1 md:gap-2 text-sm md:text-base">
+                        <span id="next-round-text">次へ</span>
+                        <svg id="next-round-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- メインエリア -->
+        <main class="flex-grow overflow-y-auto p-2 md:p-4 bg-gradient-to-br from-green-50 to-amber-50 scroll-smooth">
+            <div id="spectator-warning"
+                class="hidden mb-4 bg-gray-600 text-white text-center py-2 px-4 rounded font-bold text-sm shadow-md">
+                👀 観戦モード（操作は同期されますが変更はできません）
+            </div>
+
+            <!-- グリッド (モバイル2列、PC多列) -->
+            <div id="accum-container"
+                class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4 pb-24 items-start content-start">
+            </div>
+
+            <div class="mt-4 mb-12 flex justify-center px-4">
+                <button onclick="openModal()" id="add-card-btn"
+                    class="group flex flex-col items-center justify-center w-full max-w-sm h-14 md:h-24 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-white/50 hover:bg-blue-50 transition-all text-slate-400 hover:text-blue-500 active:scale-95">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            class="h-6 w-6 opacity-50 group-hover:opacity-100 transition-opacity" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span class="text-sm font-bold">カードを追加</span>
+                    </div>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- カード追加モーダル -->
+    <div id="add-card-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+        <div class="modal-overlay absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onclick="closeModal()"></div>
+        <div
+            class="modal-content absolute inset-x-0 bottom-0 md:top-20 md:bottom-auto md:max-w-md md:mx-auto bg-white rounded-t-2xl md:rounded-2xl shadow-2xl p-5 md:p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800">カードを追加</h3>
+                <button onclick="closeModal()" class="text-slate-400 bg-slate-100 rounded-full p-2"><svg class="h-5 w-5"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg></button>
+            </div>
+            <form id="add-card-form" onsubmit="handleAddCard(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-1">名前</label>
+                    <input type="text" name="name" placeholder="カスタム"
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold">
+                </div>
+                <div class="flex gap-4">
+                    <div class="flex-1"><label class="block text-sm font-bold text-slate-600 mb-1">増加数</label><input
+                            type="number" name="perRound" required value="1" min="1"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold"></div>
+                    <div class="flex-1"><label class="block text-sm font-bold text-slate-600 mb-1">開始R</label><input
+                            type="number" name="startRound" min="1" max="14"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-2">アイコン</label>
+                    <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1" id="icon-selector"></div>
+                    <input type="hidden" name="icon" id="selected-icon" value="🪵">
+                </div>
+                <button type="submit"
+                    class="w-full py-3 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-md">追加する</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // ▼ ユーザー提供の設定を反映しました ▼
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4Ll33_-0HDZL2yEa3_HnvCVyc41wkALE",
+            authDomain: "agricola-tracker.firebaseapp.com",
+            projectId: "agricola-tracker",
+            storageBucket: "agricola-tracker.firebasestorage.app",
+            messagingSenderId: "120700598628",
+            appId: "1:120700598628:web:ac18383a07d4e567cde271",
+            measurementId: "G-BHFLBV5N4S"
+        };
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+        let app, db, auth, currentUser;
+        let currentRoomId = null;
+        let isSpectator = false;
+        let unsubscribeRoom = null;
+
+        // グローバル変数としてアプリの状態を保持（同期対象）
+        let gameState = {
+            currentRound: 1,
+            playerCount: 4,
+            accumSpaces: [],
+            players: []
+        };
+
+        // UI操作関数をwindowに公開
+        window.createRoom = createRoom;
+        window.joinRoom = joinRoom;
+        window.handleMainButton = handleMainButton;
+        window.takeAll = takeAll;
+        window.updateCount = updateCount;
+        window.manualInput = manualInput;
+        window.toggleEnabled = toggleEnabled;
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.handleAddCard = handleAddCard;
+        window.selectIcon = selectIcon;
+
+        // --- 初期化 ---
+        async function initApp() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // 認証状態の監視 (匿名認証)
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        document.getElementById('auth-loading').classList.add('hidden');
+                        document.getElementById('lobby-controls').classList.remove('hidden');
+
+                        // 再接続チェック
+                        const savedRoomId = localStorage.getItem('agricola_room_id');
+                        if (savedRoomId) {
+                            console.log("Restoring session...", savedRoomId);
+                            await connectToRoom(savedRoomId);
+                        }
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                });
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+                alert("接続エラーが発生しました。コンソールを確認してください。");
+            }
+        }
+        initApp();
+
+        // --- ルーム管理 ---
+
+        async function createRoom() {
+            if (!currentUser) return;
+            const roomId = Math.floor(1000 + Math.random() * 9000).toString();
+            const initialSpaces = JSON.parse(JSON.stringify(INITIAL_ACCUM_SPACES));
+
+            const newRoomData = {
+                currentRound: 1,
+                playerCount: 4,
+                accumSpaces: initialSpaces,
+                updatedAt: Date.now(),
+                players: [{
+                    uid: currentUser.uid,
+                    name: "P1",
+                    colorIndex: 0,
+                    joinedAt: Date.now()
+                }]
+            };
+
+            try {
+                await setDoc(doc(db, "rooms", roomId), newRoomData);
+                localStorage.setItem('agricola_room_id', roomId);
+                connectToRoom(roomId);
+            } catch (e) {
+                console.error("Error creating room:", e);
+                alert("ルーム作成に失敗しました: " + e.message);
+            }
+        }
+
+        async function joinRoom() {
+            const input = document.getElementById('room-code-input');
+            const roomId = input.value.trim();
+            if (roomId.length !== 4) return alert("4桁のコードを入力してください");
+            connectToRoom(roomId);
+        }
+
+        async function connectToRoom(roomId) {
+            const roomRef = doc(db, "rooms", roomId);
+            const roomSnap = await getDoc(roomRef);
+
+            if (!roomSnap.exists()) {
+                if (localStorage.getItem('agricola_room_id') === roomId) {
+                    localStorage.removeItem('agricola_room_id');
+                }
+                return alert("ルームが見つかりません");
+            }
+
+            currentRoomId = roomId;
+            localStorage.setItem('agricola_room_id', roomId);
+
+            // ロビーを閉じてゲーム画面へ
+            document.getElementById('view-lobby').classList.add('hidden');
+            document.getElementById('view-lobby').style.display = 'none';
+            document.getElementById('view-game').classList.remove('hidden');
+            document.getElementById('view-game').style.display = 'flex';
+            document.getElementById('room-code-display').textContent = roomId;
+
+            // リアルタイム同期開始
+            if (unsubscribeRoom) unsubscribeRoom();
+            unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    handleRoomUpdate(docSnap.data());
+                } else {
+                    alert("ルームが閉じられました");
+                    localStorage.removeItem('agricola_room_id');
+                    location.reload();
+                }
+            });
+
+            // プレイヤー登録処理
+            const currentData = roomSnap.data();
+            const existingPlayer = currentData.players.find(p => p.uid === currentUser.uid);
+
+            if (!existingPlayer) {
+                if (currentData.players.length >= 5) {
+                    isSpectator = true;
+                    showSpectatorMode();
+                } else {
+                    const newPlayer = {
+                        uid: currentUser.uid,
+                        name: `P${currentData.players.length + 1}`,
+                        colorIndex: currentData.players.length,
+                        joinedAt: Date.now()
+                    };
+                    await updateDoc(roomRef, {
+                        players: arrayUnion(newPlayer)
+                    });
+                }
+            } else {
+                isSpectator = false;
+            }
+        }
+
+        function handleRoomUpdate(data) {
+            gameState = data;
+
+            renderPlayerList(data.players);
+
+            // 自分の状態確認
+            const me = data.players.find(p => p.uid === currentUser.uid);
+            if (!me && data.players.length >= 5) {
+                if (!isSpectator) {
+                    isSpectator = true;
+                    showSpectatorMode();
+                }
+            }
+
+            renderAll();
+        }
+
+        function showSpectatorMode() {
+            document.getElementById('spectator-warning').classList.remove('hidden');
+            document.getElementById('add-card-btn').style.display = 'none';
+            const nextBtn = document.getElementById('next-round-btn');
+            nextBtn.disabled = true;
+            nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // --- データ同期用アクション (DB更新) ---
+
+        async function syncState(updates) {
+            if (isSpectator || !currentRoomId) return;
+            const roomRef = doc(db, "rooms", currentRoomId);
+            try {
+                await updateDoc(roomRef, updates);
+            } catch (e) {
+                console.error("Sync error:", e);
+            }
+        }
+
+        async function handleMainButton() {
+            if (gameState.currentRound < 14) {
+                let newRound = gameState.currentRound + 1;
+                let newSpaces = [...gameState.accumSpaces];
+
+                newSpaces.forEach(space => {
+                    if (space.stage === 100 && !space.enabled && space.startRound && newRound >= space.startRound) {
+                        space.enabled = true;
+                    }
+                    if (space.enabled && isAvailableByPlayers(space, gameState.playerCount)) {
+                        space.current += space.perRound;
+                    }
+                });
+
+                await syncState({
+                    currentRound: newRound,
+                    accumSpaces: newSpaces
+                });
+            } else {
+                alert("ゲーム終了！");
+            }
+        }
+
+        async function takeAll(id) {
+            if (isSpectator) return;
+            let newSpaces = [...gameState.accumSpaces];
+            const idx = newSpaces.findIndex(s => s.id === id);
+            if (idx >= 0 && newSpaces[idx].current > 0) {
+                newSpaces[idx].current = 0;
+                await syncState({ accumSpaces: newSpaces });
+            }
+        }
+
+        async function updateCount(id, diff) {
+            if (isSpectator) return;
+            let newSpaces = [...gameState.accumSpaces];
+            const idx = newSpaces.findIndex(s => s.id === id);
+            if (idx >= 0) {
+                const newVal = newSpaces[idx].current + diff;
+                if (newVal >= 0) {
+                    newSpaces[idx].current = newVal;
+                    await syncState({ accumSpaces: newSpaces });
+                }
+            }
+        }
+
+        async function manualInput(id, valueStr) {
+            if (isSpectator) return;
+            let val = parseInt(valueStr, 10);
+            if (isNaN(val) || val < 0) val = 0;
+
+            let newSpaces = [...gameState.accumSpaces];
+            const idx = newSpaces.findIndex(s => s.id === id);
+            if (idx >= 0) {
+                newSpaces[idx].current = val;
+                await syncState({ accumSpaces: newSpaces });
+            }
+        }
+
+        async function toggleEnabled(id) {
+            if (isSpectator) return;
+            let newSpaces = [...gameState.accumSpaces];
+            const idx = newSpaces.findIndex(s => s.id === id);
+            if (idx >= 0) {
+                newSpaces[idx].enabled = !newSpaces[idx].enabled;
+                if (newSpaces[idx].startRound) delete newSpaces[idx].startRound;
+                await syncState({ accumSpaces: newSpaces });
+            }
+        }
+
+        async function handleAddCard(e) {
+            e.preventDefault();
+            if (isSpectator) return;
+            const form = e.target;
+            let name = form.name.value.trim();
+            if (!name) name = `カスタム`;
+            const perRound = parseInt(form.perRound.value, 10);
+            let startRoundInput = parseInt(form.startRound.value, 10);
+            const icon = form.icon.value;
+            let startRound = isNaN(startRoundInput) ? gameState.currentRound : startRoundInput;
+            let enabled = true;
+            if (!isNaN(startRoundInput) && startRoundInput > gameState.currentRound) enabled = false;
+
+            const newCard = {
+                id: 'custom-' + Date.now(),
+                name, perRound, current: 0,
+                stage: 100, enabled, icon, startRound
+            };
+
+            await syncState({
+                accumSpaces: arrayUnion(newCard)
+            });
+            closeModal();
+        }
+
+        // --- 描画ロジック ---
+
+        const HARVEST_ROUNDS = [4, 7, 9, 11, 13, 14];
+        const PLAYER_COLORS = [
+            { bg: 'bg-red-500', text: 'text-red-500' },
+            { bg: 'bg-blue-500', text: 'text-blue-500' },
+            { bg: 'bg-green-500', text: 'text-green-500' },
+            { bg: 'bg-amber-500', text: 'text-amber-500' },
+            { bg: 'bg-purple-500', text: 'text-purple-500' },
+        ];
+
+        function isAvailableByPlayers(space, pCount) {
+            if (space.stage !== 0) return true;
+            if (Array.isArray(space.playerCounts)) return space.playerCounts.includes(pCount);
+            const minP = (space.minPlayers ?? 1);
+            return pCount >= minP;
+        }
+
+        function renderAll() {
+            renderTopPanel();
+            renderAccumSpaces();
+        }
+
+        function renderPlayerList(players) {
+            const container = document.getElementById('players-list');
+            container.innerHTML = '';
+            players.forEach(p => {
+                const color = PLAYER_COLORS[p.colorIndex] || { bg: 'bg-gray-400' };
+                const dot = document.createElement('div');
+                dot.className = `w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-[10px] text-white font-bold ${color.bg}`;
+                dot.textContent = p.name.substring(1);
+                dot.title = p.uid === currentUser.uid ? "You" : "Player";
+                container.appendChild(dot);
+            });
+        }
+
+        function renderTopPanel() {
+            document.getElementById('current-round-display').textContent = gameState.currentRound;
+
+            const alert = document.getElementById('harvest-alert');
+            const isHarvest = HARVEST_ROUNDS.includes(gameState.currentRound);
+            if (isHarvest) alert.classList.remove('hidden');
+            else alert.classList.add('hidden');
+
+            renderTimeline();
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('round-timeline');
+            container.innerHTML = '';
+            let startR = Math.max(1, gameState.currentRound - 2);
+            let endR = Math.min(14, gameState.currentRound + 4);
+
+            for (let r = startR; r <= endR; r++) {
+                const el = document.createElement('div');
+                const isCurrent = (r === gameState.currentRound);
+                const isHarvest = HARVEST_ROUNDS.includes(r);
+
+                let bgClass = isCurrent ? 'bg-green-600 text-white ring-2 ring-green-200' : 'bg-slate-100 text-slate-400';
+                if (isHarvest && !isCurrent) bgClass = 'bg-amber-100 text-amber-600 border border-amber-200';
+                if (isHarvest && isCurrent) bgClass = 'bg-amber-500 text-white ring-2 ring-amber-200';
+
+                el.className = `flex-none rounded px-2 py-0.5 text-xs font-bold ${bgClass}`;
+                el.textContent = isHarvest ? `${r}🌾` : r;
+                container.appendChild(el);
+            }
+        }
+
+        function renderAccumSpaces() {
+            const container = document.getElementById('accum-container');
+            container.innerHTML = '';
+
+            const groups = {};
+            gameState.accumSpaces.forEach(space => {
+                if (space.stage === 0 && !isAvailableByPlayers(space, gameState.playerCount)) return;
+                if (!groups[space.stage]) groups[space.stage] = [];
+                groups[space.stage].push(space);
+            });
+            const stages = Object.keys(groups).map(Number).sort((a, b) => a - b);
+
+            stages.forEach(stage => {
+                const stageGroup = groups[stage];
+                const headerWrapper = document.createElement('div');
+                headerWrapper.className = 'col-span-full mt-2 first:mt-0';
+
+                let title = stage === 0 ? '常設' : (stage === 100 ? 'オプション' : `Stage ${stage}`);
+                let colorClass = stage === 0 ? 'text-green-700' : (stage === 100 ? 'text-blue-600' : 'text-slate-500');
+
+                headerWrapper.innerHTML = `<span class="text-xs font-black ${colorClass} uppercase tracking-wider border-b-2 border-slate-200/50 pb-0.5">${title}</span>`;
+                container.appendChild(headerWrapper);
+
+                stageGroup.forEach(space => container.appendChild(createCardElement(space)));
+            });
+        }
+
+        function createCardElement(space) {
+            const div = document.createElement('div');
+            const isPending = space.stage === 100 && !space.enabled && space.startRound && space.startRound > gameState.currentRound;
+            const isActive = space.enabled && isAvailableByPlayers(space, gameState.playerCount);
+
+            let borderClass = isActive ? 'border-green-200 active:border-green-400' : 'border-slate-200 border-dashed';
+            if (isPending) borderClass = 'border-amber-300 border-2 bg-amber-50/30';
+            const opacityClass = isActive ? 'opacity-100' : (isPending ? 'opacity-80' : 'opacity-60 bg-slate-100');
+            const shadowClass = isActive ? 'shadow-sm active:shadow-md' : 'shadow-none';
+            const cursorClass = isActive && !isSpectator ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default';
+
+            // スマホ2列表示に対応したクラス (h-24 md:h-32)
+            div.className = `card-transition relative rounded-xl border ${borderClass} bg-white ${shadowClass} ${opacityClass} ${cursorClass} p-2 md:p-3 flex flex-col justify-between h-24 md:h-32 select-none group overflow-hidden`;
+
+            if (isActive && !isSpectator) {
+                div.onclick = () => takeAll(space.id);
+            }
+
+            const pendingBadge = isPending ? `<span class="absolute -top-3 -right-3 bg-amber-400 text-white font-bold text-[10px] px-2 py-0.5 pt-3 rounded-bl-xl shadow-sm z-20">待機中</span>` : '';
+            const toggleHtml = !isSpectator ? `
+            ${pendingBadge}
+            <div class="absolute top-2 right-2 z-20" onclick="event.stopPropagation()">
+                <label class="inline-flex items-center cursor-pointer p-1 -m-1">
+                    <input type="checkbox" class="sr-only peer" ${space.enabled ? 'checked' : ''} onchange="toggleEnabled('${space.id}')">
+                    <div class="w-7 h-4 ${space.enabled ? 'bg-green-500' : 'bg-slate-300'} peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[6px] after:left-[6px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 shadow-sm"></div>
+                </label>
+            </div>` : '';
+
+            const bgIconHtml = `<div class="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none z-0"><span class="text-6xl md:text-8xl opacity-20 transform scale-125 -rotate-12 filter blur-[0.5px] grayscale-[20%]">${space.icon || ''}</span></div>`;
+
+            let numColorClass = 'text-slate-300';
+            if (space.current > 0) {
+                if (space.current > 10) numColorClass = 'text-red-600';
+                else if (space.current >= 5) numColorClass = 'text-orange-500';
+                else numColorClass = 'text-slate-700';
+            }
+
+            const disabledAttr = (!isActive || isSpectator) ? 'disabled' : '';
+
+            div.innerHTML = `
+                ${bgIconHtml}
+                ${toggleHtml}
+                <div class="flex flex-col relative z-10 pr-8">
+                    <h4 class="text-xs md:text-sm font-bold text-slate-700 truncate drop-shadow-sm bg-white/60 rounded px-1 -ml-1 w-fit backdrop-blur-[1px]">${space.name}</h4>
+                    <p class="text-[10px] text-slate-500 font-medium px-1">毎R: <span class="text-green-600 font-bold">+${space.perRound}</span></p>
+                </div>
+                <div class="flex-grow flex items-center justify-center pointer-events-none relative z-10">
+                    <span class="text-4xl md:text-5xl font-black ${numColorClass} tracking-tighter transition-colors drop-shadow-sm">${space.current}</span>
+                </div>
+                <div class="flex items-center justify-center gap-1 z-10 pt-1 border-t border-slate-100 bg-white/80 rounded-b-lg -mx-2 -mb-2 md:-mx-3 md:-mb-3 pb-1 md:pb-2" onclick="event.stopPropagation()">
+                    <button onclick="updateCount('${space.id}', -1)" ${disabledAttr} class="w-7 h-7 md:w-6 md:h-6 flex items-center justify-center bg-slate-100 active:bg-slate-300 md:hover:bg-slate-200 text-slate-600 rounded text-sm font-bold">-</button>
+                    <input type="number" value="${space.current}" min="0" onchange="manualInput('${space.id}', this.value)" ${disabledAttr} class="w-8 text-center text-xs font-bold text-slate-600 bg-transparent focus:outline-none focus:bg-slate-50 rounded p-0">
+                    <button onclick="updateCount('${space.id}', 1)" ${disabledAttr} class="w-7 h-7 md:w-6 md:h-6 flex items-center justify-center bg-slate-100 active:bg-slate-300 md:hover:bg-slate-200 text-slate-600 rounded text-sm font-bold">+</button>
+                </div>
+            `;
+            return div;
+        }
+
+        const INITIAL_ACCUM_SPACES = [
+            { id: 'wood', name: '木材', perRound: 3, current: 3, stage: 0, enabled: true, icon: '🪵', minPlayers: 1 },
+            { id: 'clay', name: 'レンガ', perRound: 1, current: 1, stage: 0, enabled: true, icon: '🧱', minPlayers: 1 },
+            { id: 'reed', name: '葦', perRound: 1, current: 1, stage: 0, enabled: true, icon: '🌿', minPlayers: 1 },
+            { id: 'food', name: '漁 (食料)', perRound: 1, current: 1, stage: 0, enabled: true, icon: '🐟', minPlayers: 1 },
+            { id: 'clay_p3', name: 'レンガ（3人用）', perRound: 1, current: 1, stage: 0, enabled: true, icon: '🧱', playerCounts: [3] },
+            { id: 'wood_p3', name: '木材（3人用）', perRound: 2, current: 2, stage: 0, enabled: true, icon: '🪵', playerCounts: [3] },
+            { id: 'wood2_p4', name: '木材（4人用）', perRound: 2, current: 2, stage: 0, enabled: true, icon: '🪵', playerCounts: [4] },
+            { id: 'clay_p4', name: 'レンガ（4人用）', perRound: 2, current: 2, stage: 0, enabled: true, icon: '🧱', playerCounts: [4] },
+            { id: 'wood1_p4', name: '木材（4人用）', perRound: 1, current: 1, stage: 0, enabled: true, icon: '🪵', playerCounts: [4] },
+            { id: 'food_p4', name: '旅の演奏家（食料）', perRound: 1, current: 1, stage: 0, enabled: true, icon: '🐟', playerCounts: [4] },
+            { id: 'wood_p5', name: '木材（5人用）', perRound: 4, current: 4, stage: 0, enabled: true, icon: '🪵', playerCounts: [5] },
+            { id: 'clay_p5', name: 'レンガ（5人用）', perRound: 3, current: 3, stage: 0, enabled: true, icon: '🧱', playerCounts: [5] },
+            { id: 'food_p5', name: '建築or演奏家（食料）', perRound: 1, current: 1, stage: 0, enabled: true, icon: '🐟', playerCounts: [5] },
+            { id: 'read_p5', name: '葦（+木材と石材）', perRound: 1, current: 1, stage: 0, enabled: true, icon: '🌿', playerCounts: [5] },
+            { id: 'sheep', name: '羊', perRound: 1, current: 1, stage: 1, enabled: false, icon: '🐑' },
+            { id: 'stone1', name: '石材 (西)', perRound: 1, current: 1, stage: 2, enabled: false, icon: '🪨' },
+            { id: 'boar', name: '猪', perRound: 1, current: 1, stage: 3, enabled: false, icon: '🐗' },
+            { id: 'veg', name: '野菜', perRound: 1, current: 1, stage: 3, enabled: false, icon: '🥕' },
+            { id: 'cattle', name: '牛', perRound: 1, current: 1, stage: 4, enabled: false, icon: '🐄' },
+            { id: 'stone2', name: '石材 (東)', perRound: 1, current: 1, stage: 4, enabled: false, icon: '🪨' }
+        ];
+
+        const ICON_OPTIONS = ['🪵', '🧱', '🌿', '🪨', '🌾', '🥕', '🐑', '🐗', '🐄', '🐴', '🐶', '🐟', '🥖', '🏠', '🔥', '💰', '🎭', '🍺', '🎪', '🍇'];
+        function renderIconSelector() {
+            const container = document.getElementById('icon-selector');
+            container.innerHTML = '';
+            ICON_OPTIONS.forEach(icon => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `w-10 h-10 flex items-center justify-center text-2xl rounded-lg border-2 transition-all hover:bg-slate-50 ${icon === ICON_OPTIONS[0] ? 'border-green-500 bg-green-50' : 'border-transparent'}`;
+                btn.textContent = icon;
+                btn.onclick = () => selectIcon(icon, btn);
+                container.appendChild(btn);
+            });
+        }
+        function selectIcon(icon, btnElement) {
+            document.getElementById('selected-icon').value = icon;
+            const container = document.getElementById('icon-selector');
+            Array.from(container.children).forEach(b => {
+                b.classList.remove('border-green-500', 'bg-green-50');
+                b.classList.add('border-transparent');
+            });
+            if (btnElement) {
+                btnElement.classList.remove('border-transparent');
+                btnElement.classList.add('border-green-500', 'bg-green-50');
+            }
+        }
+        renderIconSelector();
+
+    </script>
+</body>
+
+</html>
