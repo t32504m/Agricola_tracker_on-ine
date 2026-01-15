@@ -87,6 +87,12 @@
                         <div class="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
                             <span>Room:</span>
                             <span id="room-code-display" class="bg-slate-100 px-1 rounded text-slate-600 select-all font-mono">----</span>
+                            <!-- 退出ボタン -->
+                            <button onclick="leaveRoom()" class="ml-1 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="ルームから退出">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                            </button>
                         </div>
                         <h1 class="hidden lg:block text-xl font-bold text-green-900">アグリコラ</h1>
                     </div>
@@ -108,6 +114,18 @@
                 </div>
 
                 <div class="flex items-center gap-2 md:gap-3 flex-none">
+                    <!-- プレイヤー人数選択 (復活) -->
+                    <div class="flex items-center gap-1 md:gap-2 bg-slate-50 rounded-lg px-2 py-1 border border-slate-200">
+                        <span class="text-[10px] md:text-xs text-slate-500 font-bold whitespace-nowrap">人数</span>
+                        <select id="player-count-select" onchange="changePlayerCount(this.value)"
+                            class="bg-transparent text-sm md:text-base font-black text-slate-700 focus:outline-none w-8 md:w-auto">
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+
                     <!-- 参加者インジケーター -->
                     <div id="players-list" class="flex -space-x-1 overflow-hidden">
                         <!-- JSで生成 -->
@@ -205,6 +223,27 @@
             accumSpaces: [], 
             players: []
         };
+        
+        // 退出機能（windowオブジェクトに公開）
+        window.leaveRoom = function() {
+            if(!confirm('ルームから退出してロビーに戻りますか？')) return;
+            localStorage.removeItem('agricola_room_id');
+            // リロードして初期状態に戻す
+            location.reload();
+        };
+
+        // 人数変更機能（windowオブジェクトに公開）
+        window.changePlayerCount = function(value) {
+            if (isSpectator) {
+                // 観戦者は変更不可。UIを戻す
+                document.getElementById('player-count-select').value = gameState.playerCount;
+                return;
+            }
+            const newCount = parseInt(value, 10);
+            if (!isNaN(newCount)) {
+                syncState({ playerCount: newCount });
+            }
+        };
 
         // --- 初期化 ---
         function initApp() {
@@ -273,7 +312,7 @@
             
             const newRoomData = {
                 currentRound: 1,
-                playerCount: 4,
+                playerCount: 4, // デフォルト4人
                 accumSpaces: initialSpaces,
                 updatedAt: Date.now(),
                 players: [{
@@ -310,6 +349,9 @@
                         localStorage.removeItem('agricola_room_id');
                     }
                     alert("ルームが見つかりません (ID: " + roomId + ")");
+                    // ルームが見つからない場合はリロードせずにロビーを表示（リロードループ防止）
+                    document.getElementById('view-lobby').style.display = 'flex';
+                    document.getElementById('view-lobby').classList.remove('hidden');
                     return;
                 }
 
@@ -381,6 +423,7 @@
         function showSpectatorMode() {
             document.getElementById('spectator-warning').classList.remove('hidden');
             document.getElementById('add-card-btn').style.display = 'none';
+            document.getElementById('player-count-select').disabled = true; // 人数選択も不可
             const nextBtn = document.getElementById('next-round-btn');
             nextBtn.disabled = true;
             nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -528,6 +571,10 @@
         function renderTopPanel() {
             document.getElementById('current-round-display').textContent = gameState.currentRound;
             
+            // 人数選択の同期
+            const pcSelect = document.getElementById('player-count-select');
+            if (pcSelect) pcSelect.value = gameState.playerCount || 4;
+
             const alert = document.getElementById('harvest-alert');
             const isHarvest = HARVEST_ROUNDS.includes(gameState.currentRound);
             if (isHarvest) alert.classList.remove('hidden');
