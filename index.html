@@ -44,6 +44,8 @@
             <div id="auth-loading" class="flex flex-col items-center justify-center space-y-4">
                 <div class="spinner"></div>
                 <p class="text-slate-400 text-sm font-bold">サーバー接続中...</p>
+                <!-- エラー時にここにメッセージが出ます -->
+                <div id="error-message-box" class="hidden text-red-600 bg-red-50 p-4 rounded-lg text-xs text-left w-full border border-red-200"></div>
             </div>
 
             <div id="lobby-controls" class="hidden space-y-6">
@@ -172,13 +174,14 @@
         </div>
     </div>
 
-    <!-- Firebase SDK (Modular) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    <!-- Firebase SDK (Compat Version: 安定性重視) -->
+    <!-- 1. 以下のscriptタグでFirebaseを読み込みます -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
-        // ▼ ユーザー提供の設定を反映しました ▼
+    <script>
+        // 2. Firebase設定
         const firebaseConfig = {
             apiKey: "AIzaSyC4Ll33_-0HDZL2yEa3_HnvCVyc41wkALE",
             authDomain: "agricola-tracker.firebaseapp.com",
@@ -188,14 +191,14 @@
             appId: "1:120700598628:web:ac18383a07d4e567cde271",
             measurementId: "G-BHFLBV5N4S"
         };
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-        let app, db, auth, currentUser;
+        // アプリ変数
+        let db, auth, currentUser;
         let currentRoomId = null;
         let isSpectator = false;
         let unsubscribeRoom = null;
 
-        // グローバル変数としてアプリの状態を保持（同期対象）
+        // グローバル変数としてアプリの状態を保持
         let gameState = {
             currentRound: 1,
             playerCount: 4,
@@ -203,29 +206,20 @@
             players: []
         };
 
-        // UI操作関数をwindowに公開
-        window.createRoom = createRoom;
-        window.joinRoom = joinRoom;
-        window.handleMainButton = handleMainButton;
-        window.takeAll = takeAll;
-        window.updateCount = updateCount;
-        window.manualInput = manualInput;
-        window.toggleEnabled = toggleEnabled;
-        window.openModal = openModal;
-        window.closeModal = closeModal;
-        window.handleAddCard = handleAddCard;
-        window.selectIcon = selectIcon;
-
         // --- 初期化 ---
-        async function initApp() {
+        function initApp() {
             try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
+                // Firebase初期化 (Compat style)
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                auth = firebase.auth();
 
-                // 認証状態の監視 (匿名認証)
-                onAuthStateChanged(auth, async (user) => {
+                console.log("Firebase Initialized");
+
+                // 認証状態の監視
+                auth.onAuthStateChanged((user) => {
                     if (user) {
+                        console.log("User signed in:", user.uid);
                         currentUser = user;
                         document.getElementById('auth-loading').classList.add('hidden');
                         document.getElementById('lobby-controls').classList.remove('hidden');
@@ -234,42 +228,45 @@
                         const savedRoomId = localStorage.getItem('agricola_room_id');
                         if (savedRoomId) {
                             console.log("Restoring session...", savedRoomId);
-                            await connectToRoom(savedRoomId);
+                            connectToRoom(savedRoomId);
                         }
                     } else {
-                        // ログイン試行（エラーハンドリング付き）
-                        try {
-                            await signInAnonymously(auth);
-                        } catch (error) {
-                            console.error("Auth Error:", error);
-                            const loadingEl = document.getElementById('auth-loading');
-                            // エラー時に具体的な解決策を画面に表示する
-                            loadingEl.innerHTML = `
-                                <div class="text-red-600 font-bold text-sm text-left bg-red-50 p-6 rounded-xl border border-red-200 shadow-lg max-w-sm">
-                                    <p class="mb-3 text-lg flex items-center gap-2">⚠️ 接続できません</p>
-                                    <p class="text-xs text-slate-700 mb-2 font-bold">Firebaseコンソールで以下の設定が必要です：</p>
-                                    <ul class="list-decimal list-inside text-xs text-slate-600 space-y-2 mb-3">
-                                        <li><strong>Authentication</strong> メニューを開く</li>
-                                        <li><strong>Sign-in method</strong> タブで<br><span class="inline-block bg-white px-1 border rounded">匿名 (Anonymous)</span> を有効にする</li>
-                                        <li><strong>Settings</strong> タブの <strong>Authorized domains</strong> に<br><span class="inline-block bg-white px-1 border rounded">github.io</span> ドメインを追加する</li>
-                                    </ul>
-                                    <p class="text-[10px] text-slate-400 font-mono bg-white p-1 rounded border">Error: ${error.code}</p>
-                                </div>
-                            `;
-                        }
+                        console.log("No user, signing in anonymously...");
+                        // 匿名ログイン
+                        auth.signInAnonymously().catch((error) => {
+                            showError("ログインエラー", error);
+                        });
                     }
                 });
+
             } catch (e) {
-                console.error("Firebase Init Error:", e);
-                const loadingEl = document.getElementById('auth-loading');
-                loadingEl.innerHTML = `<p class="text-red-500 font-bold">初期化エラー: ${e.message}</p>`;
+                showError("Firebase初期化エラー", e);
             }
         }
-        initApp();
+        
+        // 画面読み込み時に実行
+        window.addEventListener('load', initApp);
+
+        // エラー表示用関数
+        function showError(title, error) {
+            console.error(title, error);
+            const msgBox = document.getElementById('error-message-box');
+            if (msgBox) {
+                msgBox.classList.remove('hidden');
+                msgBox.innerHTML = `
+                    <strong class="block mb-1">⚠️ ${title}</strong>
+                    <span class="block mb-2">${error.message || error.code || error}</span>
+                    <ul class="list-disc list-inside mt-2">
+                        <li>Firebase Consoleで <strong>Authentication > Sign-in method</strong> の「匿名(Anonymous)」が有効か確認してください。</li>
+                        <li><strong>Authorized domains</strong> にこのサイトのドメインが追加されているか確認してください。</li>
+                    </ul>
+                `;
+            }
+        }
 
         // --- ルーム管理 ---
 
-        async function createRoom() {
+        function createRoom() {
             if (!currentUser) return;
             const roomId = Math.floor(1000 + Math.random() * 9000).toString();
             const initialSpaces = JSON.parse(JSON.stringify(INITIAL_ACCUM_SPACES));
@@ -287,95 +284,87 @@
                 }]
             };
 
-            try {
-                await setDoc(doc(db, "rooms", roomId), newRoomData);
-                localStorage.setItem('agricola_room_id', roomId);
-                connectToRoom(roomId);
-            } catch (e) {
-                console.error("Error creating room:", e);
-                alert("ルーム作成に失敗しました: " + e.message);
-            }
+            db.collection("rooms").doc(roomId).set(newRoomData)
+                .then(() => {
+                    localStorage.setItem('agricola_room_id', roomId);
+                    connectToRoom(roomId);
+                })
+                .catch((e) => {
+                    alert("ルーム作成失敗: " + e.message);
+                });
         }
 
-        async function joinRoom() {
+        function joinRoom() {
             const input = document.getElementById('room-code-input');
             const roomId = input.value.trim();
             if (roomId.length !== 4) return alert("4桁のコードを入力してください");
             connectToRoom(roomId);
         }
 
-        async function connectToRoom(roomId) {
-            const roomRef = doc(db, "rooms", roomId);
-            let roomSnap;
-            
-            try {
-                roomSnap = await getDoc(roomRef);
-            } catch (e) {
-                // Firestoreの権限エラーなどの場合
-                console.error("Firestore Error:", e);
-                alert("ルームへのアクセスに失敗しました。Firestoreのルール設定を確認してください。\n" + e.message);
-                return;
-            }
+        function connectToRoom(roomId) {
+            const roomRef = db.collection("rooms").doc(roomId);
 
-            if (!roomSnap.exists()) {
-                if (localStorage.getItem('agricola_room_id') === roomId) {
-                    localStorage.removeItem('agricola_room_id');
+            roomRef.get().then((docSnap) => {
+                if (!docSnap.exists) {
+                    if (localStorage.getItem('agricola_room_id') === roomId) {
+                        localStorage.removeItem('agricola_room_id');
+                    }
+                    alert("ルームが見つかりません (ID: " + roomId + ")");
+                    return;
                 }
-                return alert("ルームが見つかりません");
-            }
 
-            currentRoomId = roomId;
-            localStorage.setItem('agricola_room_id', roomId);
+                currentRoomId = roomId;
+                localStorage.setItem('agricola_room_id', roomId);
 
-            // ロビーを閉じてゲーム画面へ
-            document.getElementById('view-lobby').classList.add('hidden');
-            document.getElementById('view-lobby').style.display = 'none';
-            document.getElementById('view-game').classList.remove('hidden');
-            document.getElementById('view-game').style.display = 'flex';
-            document.getElementById('room-code-display').textContent = roomId;
+                // 画面切り替え
+                document.getElementById('view-lobby').style.display = 'none';
+                document.getElementById('view-game').style.display = 'flex';
+                document.getElementById('view-game').classList.remove('hidden'); // Ensure flex is applied properly by Tailwind/CSS, but style override is safer here
+                document.getElementById('room-code-display').textContent = roomId;
 
-            // リアルタイム同期開始
-            if (unsubscribeRoom) unsubscribeRoom();
-            unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    handleRoomUpdate(docSnap.data());
+                // リアルタイム同期
+                if (unsubscribeRoom) unsubscribeRoom();
+                unsubscribeRoom = roomRef.onSnapshot((doc) => {
+                    if (doc.exists) {
+                        handleRoomUpdate(doc.data());
+                    } else {
+                        alert("ルームが削除されました");
+                        localStorage.removeItem('agricola_room_id');
+                        location.reload();
+                    }
+                }, (error) => {
+                    console.error("Sync Error:", error);
+                });
+
+                // プレイヤー登録
+                const currentData = docSnap.data();
+                const existingPlayer = currentData.players.find(p => p.uid === currentUser.uid);
+                
+                if (!existingPlayer) {
+                    if (currentData.players.length >= 5) {
+                        isSpectator = true;
+                        showSpectatorMode();
+                    } else {
+                        const newPlayer = {
+                            uid: currentUser.uid,
+                            name: `P${currentData.players.length + 1}`,
+                            colorIndex: currentData.players.length,
+                            joinedAt: Date.now()
+                        };
+                        roomRef.update({
+                            players: firebase.firestore.FieldValue.arrayUnion(newPlayer)
+                        });
+                    }
                 } else {
-                    alert("ルームが閉じられました");
-                    localStorage.removeItem('agricola_room_id');
-                    location.reload();
+                    isSpectator = false;
                 }
-            }, (error) => {
-                console.error("Snapshot Error:", error);
-                alert("同期エラーが発生しました: " + error.message);
+            }).catch((e) => {
+                alert("接続エラー: " + e.message);
             });
-
-            // プレイヤー登録処理
-            const currentData = roomSnap.data();
-            const existingPlayer = currentData.players.find(p => p.uid === currentUser.uid);
-            
-            if (!existingPlayer) {
-                if (currentData.players.length >= 5) {
-                    isSpectator = true;
-                    showSpectatorMode();
-                } else {
-                    const newPlayer = {
-                        uid: currentUser.uid,
-                        name: `P${currentData.players.length + 1}`,
-                        colorIndex: currentData.players.length,
-                        joinedAt: Date.now()
-                    };
-                    await updateDoc(roomRef, {
-                        players: arrayUnion(newPlayer)
-                    });
-                }
-            } else {
-                isSpectator = false;
-            }
         }
 
         function handleRoomUpdate(data) {
             gameState = data;
-            
             renderPlayerList(data.players);
             
             // 自分の状態確認
@@ -386,7 +375,6 @@
                     showSpectatorMode();
                 }
             }
-            
             renderAll();
         }
 
@@ -398,19 +386,15 @@
             nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
         }
 
-        // --- データ同期用アクション (DB更新) ---
+        // --- データ同期アクション ---
 
-        async function syncState(updates) {
+        function syncState(updates) {
             if (isSpectator || !currentRoomId) return;
-            const roomRef = doc(db, "rooms", currentRoomId);
-            try {
-                await updateDoc(roomRef, updates);
-            } catch (e) {
-                console.error("Sync error:", e);
-            }
+            db.collection("rooms").doc(currentRoomId).update(updates)
+                .catch(e => console.error("Update failed:", e));
         }
 
-        async function handleMainButton() {
+        function handleMainButton() {
             if (gameState.currentRound < 14) {
                 let newRound = gameState.currentRound + 1;
                 let newSpaces = [...gameState.accumSpaces];
@@ -424,7 +408,7 @@
                     }
                 });
 
-                await syncState({
+                syncState({
                     currentRound: newRound,
                     accumSpaces: newSpaces
                 });
@@ -433,17 +417,17 @@
             }
         }
 
-        async function takeAll(id) {
+        function takeAll(id) {
             if (isSpectator) return;
             let newSpaces = [...gameState.accumSpaces];
             const idx = newSpaces.findIndex(s => s.id === id);
             if (idx >= 0 && newSpaces[idx].current > 0) {
                 newSpaces[idx].current = 0;
-                await syncState({ accumSpaces: newSpaces });
+                syncState({ accumSpaces: newSpaces });
             }
         }
 
-        async function updateCount(id, diff) {
+        function updateCount(id, diff) {
             if (isSpectator) return;
             let newSpaces = [...gameState.accumSpaces];
             const idx = newSpaces.findIndex(s => s.id === id);
@@ -451,12 +435,12 @@
                 const newVal = newSpaces[idx].current + diff;
                 if (newVal >= 0) {
                     newSpaces[idx].current = newVal;
-                    await syncState({ accumSpaces: newSpaces });
+                    syncState({ accumSpaces: newSpaces });
                 }
             }
         }
 
-        async function manualInput(id, valueStr) {
+        function manualInput(id, valueStr) {
             if (isSpectator) return;
             let val = parseInt(valueStr, 10);
             if (isNaN(val) || val < 0) val = 0;
@@ -465,22 +449,22 @@
             const idx = newSpaces.findIndex(s => s.id === id);
             if (idx >= 0) {
                 newSpaces[idx].current = val;
-                await syncState({ accumSpaces: newSpaces });
+                syncState({ accumSpaces: newSpaces });
             }
         }
 
-        async function toggleEnabled(id) {
+        function toggleEnabled(id) {
             if (isSpectator) return;
             let newSpaces = [...gameState.accumSpaces];
             const idx = newSpaces.findIndex(s => s.id === id);
             if (idx >= 0) {
                 newSpaces[idx].enabled = !newSpaces[idx].enabled;
                 if (newSpaces[idx].startRound) delete newSpaces[idx].startRound;
-                await syncState({ accumSpaces: newSpaces });
+                syncState({ accumSpaces: newSpaces });
             }
         }
 
-        async function handleAddCard(e) {
+        function handleAddCard(e) {
             e.preventDefault();
             if (isSpectator) return;
             const form = e.target;
@@ -499,8 +483,8 @@
                 stage: 100, enabled, icon, startRound
             };
 
-            await syncState({
-                accumSpaces: arrayUnion(newCard)
+            db.collection("rooms").doc(currentRoomId).update({
+                accumSpaces: firebase.firestore.FieldValue.arrayUnion(newCard)
             });
             closeModal();
         }
@@ -611,7 +595,6 @@
             const shadowClass = isActive ? 'shadow-sm active:shadow-md' : 'shadow-none';
             const cursorClass = isActive && !isSpectator ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default';
 
-            // スマホ2列表示に対応したクラス (h-24 md:h-32)
             div.className = `card-transition relative rounded-xl border ${borderClass} bg-white ${shadowClass} ${opacityClass} ${cursorClass} p-2 md:p-3 flex flex-col justify-between h-24 md:h-32 select-none group overflow-hidden`;
             
             if (isActive && !isSpectator) {
@@ -680,6 +663,20 @@
             { id: 'cattle', name: '牛', perRound: 1, current: 1, stage: 4, enabled: false, icon: '🐄' },
             { id: 'stone2', name: '石材 (東)', perRound: 1, current: 1, stage: 4, enabled: false, icon: '🪨' }
         ];
+
+        // モーダル制御
+        function openModal() {
+            document.getElementById('add-card-modal').classList.remove('hidden');
+            // デフォルト値
+            const startRoundInput = document.querySelector('input[name="startRound"]');
+            startRoundInput.value = gameState.currentRound;
+            startRoundInput.min = gameState.currentRound;
+            document.querySelector('input[name="name"]').value = '';
+        }
+
+        function closeModal() {
+            document.getElementById('add-card-modal').classList.add('hidden');
+        }
 
         const ICON_OPTIONS = ['🪵', '🧱', '🌿', '🪨', '🌾', '🥕', '🐑', '🐗', '🐄', '🐴', '🐶', '🐟', '🥖', '🏠', '🔥', '💰', '🎭', '🍺', '🎪', '🍇'];
         function renderIconSelector() {
