@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -12,38 +11,14 @@
             overscroll-behavior-y: none;
             touch-action: manipulation;
         }
-
-        .card-transition {
-            transition: all 0.15s ease-out;
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
-        }
-
-        * {
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
+        .card-transition { transition: all 0.15s ease-out; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        * { -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
         /* ローディングスピナー */
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -53,24 +28,13 @@
             border-left-color: #09f;
             animation: spin 1s ease infinite;
         }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-
 <body class="bg-slate-100 h-[100dvh] flex flex-col text-slate-800 overflow-hidden">
 
     <!-- ■■■ ロビー画面 (初期表示) ■■■ -->
-    <div id="view-lobby"
-        class="fixed inset-0 z-50 bg-slate-100 flex flex-col items-center justify-center p-4 transition-opacity duration-300">
+    <div id="view-lobby" class="fixed inset-0 z-50 bg-slate-100 flex flex-col items-center justify-center p-4 transition-opacity duration-300">
         <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-8 text-center">
             <div>
                 <h1 class="text-3xl font-black text-green-700 mb-2">Agricola Tracker</h1>
@@ -84,8 +48,7 @@
 
             <div id="lobby-controls" class="hidden space-y-6">
                 <!-- ルーム作成 -->
-                <button onclick="createRoom()"
-                    class="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transform active:scale-95 transition-all text-lg flex items-center justify-center gap-2">
+                <button onclick="createRoom()" class="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transform active:scale-95 transition-all text-lg flex items-center justify-center gap-2">
                     <span>🏠 新しいルームを作成</span>
                 </button>
 
@@ -99,10 +62,9 @@
                 <div class="space-y-3">
                     <label class="block text-left text-sm font-bold text-slate-600">参加コード (4桁)</label>
                     <div class="flex gap-2">
-                        <input type="text" id="room-code-input" maxlength="4" placeholder="1234"
+                        <input type="text" id="room-code-input" maxlength="4" placeholder="1234" 
                             class="flex-1 bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-2xl font-black text-center tracking-widest focus:outline-none focus:border-green-500 text-slate-700 uppercase">
-                        <button onclick="joinRoom()"
-                            class="flex-none px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow active:scale-95 transition-all">
+                        <button onclick="joinRoom()" class="flex-none px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow active:scale-95 transition-all">
                             参加
                         </button>
                     </div>
@@ -114,38 +76,31 @@
     <!-- ■■■ ゲーム画面 (ルーム入室後) ■■■ -->
     <div id="view-game" class="hidden flex-col h-full w-full">
         <!-- ヘッダー -->
-        <header id="top-panel"
-            class="bg-white shadow-sm z-30 border-b border-green-200 flex-none transition-colors duration-500 pb-safe">
+        <header id="top-panel" class="bg-white shadow-sm z-30 border-b border-green-200 flex-none transition-colors duration-500 pb-safe">
             <div class="max-w-7xl mx-auto px-3 py-2 flex items-center justify-between gap-2 md:gap-4">
-
+                
                 <div class="flex items-center gap-2 md:gap-6 flex-shrink-0">
                     <!-- ルーム情報表示 -->
                     <div class="flex flex-col">
                         <div class="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
                             <span>Room:</span>
-                            <span id="room-code-display"
-                                class="bg-slate-100 px-1 rounded text-slate-600 select-all font-mono">----</span>
+                            <span id="room-code-display" class="bg-slate-100 px-1 rounded text-slate-600 select-all font-mono">----</span>
                         </div>
                         <h1 class="hidden lg:block text-xl font-bold text-green-900">アグリコラ</h1>
                     </div>
-
-                    <div
-                        class="flex items-center gap-2 md:gap-3 bg-slate-50 rounded-lg px-2 md:px-3 py-1 border border-slate-200">
+                    
+                    <div class="flex items-center gap-2 md:gap-3 bg-slate-50 rounded-lg px-2 md:px-3 py-1 border border-slate-200">
                         <span class="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Round</span>
                         <div class="flex items-baseline gap-0.5 md:gap-1">
-                            <span id="current-round-display"
-                                class="text-2xl md:text-3xl font-black text-green-800 leading-none">1</span>
+                            <span id="current-round-display" class="text-2xl md:text-3xl font-black text-green-800 leading-none">1</span>
                             <span class="text-xs md:text-sm text-slate-400 font-bold">/ 14</span>
                         </div>
                     </div>
 
-                    <div id="round-timeline"
-                        class="flex items-center gap-1 overflow-x-auto px-1 max-w-[100px] sm:max-w-[200px] xl:max-w-none no-scrollbar">
-                    </div>
+                    <div id="round-timeline" class="flex items-center gap-1 overflow-x-auto px-1 max-w-[100px] sm:max-w-[200px] xl:max-w-none no-scrollbar"></div>
                 </div>
 
-                <div id="harvest-alert"
-                    class="hidden flex-1 text-center bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs md:text-sm font-bold animate-pulse mx-1 truncate">
+                <div id="harvest-alert" class="hidden flex-1 text-center bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs md:text-sm font-bold animate-pulse mx-1 truncate">
                     <span class="md:hidden">🌾 収穫!</span>
                     <span class="hidden md:inline">🌾 収穫ラウンドです！</span>
                 </div>
@@ -156,11 +111,10 @@
                         <!-- JSで生成 -->
                     </div>
 
-                    <button id="next-round-btn" onclick="handleMainButton()"
+                    <button id="next-round-btn" onclick="handleMainButton()" 
                         class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 md:px-6 rounded-full shadow hover:shadow-lg transform active:scale-95 transition-all flex items-center gap-1 md:gap-2 text-sm md:text-base">
                         <span id="next-round-text">次へ</span>
-                        <svg id="next-round-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg id="next-round-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </button>
@@ -170,23 +124,18 @@
 
         <!-- メインエリア -->
         <main class="flex-grow overflow-y-auto p-2 md:p-4 bg-gradient-to-br from-green-50 to-amber-50 scroll-smooth">
-            <div id="spectator-warning"
-                class="hidden mb-4 bg-gray-600 text-white text-center py-2 px-4 rounded font-bold text-sm shadow-md">
+            <div id="spectator-warning" class="hidden mb-4 bg-gray-600 text-white text-center py-2 px-4 rounded font-bold text-sm shadow-md">
                 👀 観戦モード（操作は同期されますが変更はできません）
             </div>
 
             <!-- グリッド (モバイル2列、PC多列) -->
-            <div id="accum-container"
-                class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4 pb-24 items-start content-start">
-            </div>
-
+            <div id="accum-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4 pb-24 items-start content-start"></div>
+            
             <div class="mt-4 mb-12 flex justify-center px-4">
                 <button onclick="openModal()" id="add-card-btn"
                     class="group flex flex-col items-center justify-center w-full max-w-sm h-14 md:h-24 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-white/50 hover:bg-blue-50 transition-all text-slate-400 hover:text-blue-500 active:scale-95">
                     <div class="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                            class="h-6 w-6 opacity-50 group-hover:opacity-100 transition-opacity" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 opacity-50 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                         <span class="text-sm font-bold">カードを追加</span>
@@ -198,39 +147,27 @@
 
     <!-- カード追加モーダル -->
     <div id="add-card-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
-        <div class="modal-overlay absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-            onclick="closeModal()"></div>
-        <div
-            class="modal-content absolute inset-x-0 bottom-0 md:top-20 md:bottom-auto md:max-w-md md:mx-auto bg-white rounded-t-2xl md:rounded-2xl shadow-2xl p-5 md:p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+        <div class="modal-overlay absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+        <div class="modal-content absolute inset-x-0 bottom-0 md:top-20 md:bottom-auto md:max-w-md md:mx-auto bg-white rounded-t-2xl md:rounded-2xl shadow-2xl p-5 md:p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-bold text-slate-800">カードを追加</h3>
-                <button onclick="closeModal()" class="text-slate-400 bg-slate-100 rounded-full p-2"><svg class="h-5 w-5"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg></button>
+                <button onclick="closeModal()" class="text-slate-400 bg-slate-100 rounded-full p-2"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <form id="add-card-form" onsubmit="handleAddCard(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-slate-600 mb-1">名前</label>
-                    <input type="text" name="name" placeholder="カスタム"
-                        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold">
+                    <input type="text" name="name" placeholder="カスタム" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold">
                 </div>
                 <div class="flex gap-4">
-                    <div class="flex-1"><label class="block text-sm font-bold text-slate-600 mb-1">増加数</label><input
-                            type="number" name="perRound" required value="1" min="1"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold"></div>
-                    <div class="flex-1"><label class="block text-sm font-bold text-slate-600 mb-1">開始R</label><input
-                            type="number" name="startRound" min="1" max="14"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold"></div>
+                    <div class="flex-1"><label class="block text-sm font-bold text-slate-600 mb-1">増加数</label><input type="number" name="perRound" required value="1" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold"></div>
+                    <div class="flex-1"><label class="block text-sm font-bold text-slate-600 mb-1">開始R</label><input type="number" name="startRound" min="1" max="14" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 font-bold"></div>
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-slate-600 mb-2">アイコン</label>
                     <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1" id="icon-selector"></div>
                     <input type="hidden" name="icon" id="selected-icon" value="🪵">
                 </div>
-                <button type="submit"
-                    class="w-full py-3 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-md">追加する</button>
+                <button type="submit" class="w-full py-3 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-md">追加する</button>
             </form>
         </div>
     </div>
@@ -262,7 +199,7 @@
         let gameState = {
             currentRound: 1,
             playerCount: 4,
-            accumSpaces: [],
+            accumSpaces: [], 
             players: []
         };
 
@@ -292,7 +229,7 @@
                         currentUser = user;
                         document.getElementById('auth-loading').classList.add('hidden');
                         document.getElementById('lobby-controls').classList.remove('hidden');
-
+                        
                         // 再接続チェック
                         const savedRoomId = localStorage.getItem('agricola_room_id');
                         if (savedRoomId) {
@@ -300,12 +237,32 @@
                             await connectToRoom(savedRoomId);
                         }
                     } else {
-                        await signInAnonymously(auth);
+                        // ログイン試行（エラーハンドリング付き）
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("Auth Error:", error);
+                            const loadingEl = document.getElementById('auth-loading');
+                            // エラー時に具体的な解決策を画面に表示する
+                            loadingEl.innerHTML = `
+                                <div class="text-red-600 font-bold text-sm text-left bg-red-50 p-6 rounded-xl border border-red-200 shadow-lg max-w-sm">
+                                    <p class="mb-3 text-lg flex items-center gap-2">⚠️ 接続できません</p>
+                                    <p class="text-xs text-slate-700 mb-2 font-bold">Firebaseコンソールで以下の設定が必要です：</p>
+                                    <ul class="list-decimal list-inside text-xs text-slate-600 space-y-2 mb-3">
+                                        <li><strong>Authentication</strong> メニューを開く</li>
+                                        <li><strong>Sign-in method</strong> タブで<br><span class="inline-block bg-white px-1 border rounded">匿名 (Anonymous)</span> を有効にする</li>
+                                        <li><strong>Settings</strong> タブの <strong>Authorized domains</strong> に<br><span class="inline-block bg-white px-1 border rounded">github.io</span> ドメインを追加する</li>
+                                    </ul>
+                                    <p class="text-[10px] text-slate-400 font-mono bg-white p-1 rounded border">Error: ${error.code}</p>
+                                </div>
+                            `;
+                        }
                     }
                 });
             } catch (e) {
                 console.error("Firebase Init Error:", e);
-                alert("接続エラーが発生しました。コンソールを確認してください。");
+                const loadingEl = document.getElementById('auth-loading');
+                loadingEl.innerHTML = `<p class="text-red-500 font-bold">初期化エラー: ${e.message}</p>`;
             }
         }
         initApp();
@@ -316,7 +273,7 @@
             if (!currentUser) return;
             const roomId = Math.floor(1000 + Math.random() * 9000).toString();
             const initialSpaces = JSON.parse(JSON.stringify(INITIAL_ACCUM_SPACES));
-
+            
             const newRoomData = {
                 currentRound: 1,
                 playerCount: 4,
@@ -349,7 +306,16 @@
 
         async function connectToRoom(roomId) {
             const roomRef = doc(db, "rooms", roomId);
-            const roomSnap = await getDoc(roomRef);
+            let roomSnap;
+            
+            try {
+                roomSnap = await getDoc(roomRef);
+            } catch (e) {
+                // Firestoreの権限エラーなどの場合
+                console.error("Firestore Error:", e);
+                alert("ルームへのアクセスに失敗しました。Firestoreのルール設定を確認してください。\n" + e.message);
+                return;
+            }
 
             if (!roomSnap.exists()) {
                 if (localStorage.getItem('agricola_room_id') === roomId) {
@@ -378,12 +344,15 @@
                     localStorage.removeItem('agricola_room_id');
                     location.reload();
                 }
+            }, (error) => {
+                console.error("Snapshot Error:", error);
+                alert("同期エラーが発生しました: " + error.message);
             });
 
             // プレイヤー登録処理
             const currentData = roomSnap.data();
             const existingPlayer = currentData.players.find(p => p.uid === currentUser.uid);
-
+            
             if (!existingPlayer) {
                 if (currentData.players.length >= 5) {
                     isSpectator = true;
@@ -406,9 +375,9 @@
 
         function handleRoomUpdate(data) {
             gameState = data;
-
+            
             renderPlayerList(data.players);
-
+            
             // 自分の状態確認
             const me = data.players.find(p => p.uid === currentUser.uid);
             if (!me && data.players.length >= 5) {
@@ -417,7 +386,7 @@
                     showSpectatorMode();
                 }
             }
-
+            
             renderAll();
         }
 
@@ -445,7 +414,7 @@
             if (gameState.currentRound < 14) {
                 let newRound = gameState.currentRound + 1;
                 let newSpaces = [...gameState.accumSpaces];
-
+                
                 newSpaces.forEach(space => {
                     if (space.stage === 100 && !space.enabled && space.startRound && newRound >= space.startRound) {
                         space.enabled = true;
@@ -546,7 +515,7 @@
             { bg: 'bg-amber-500', text: 'text-amber-500' },
             { bg: 'bg-purple-500', text: 'text-purple-500' },
         ];
-
+        
         function isAvailableByPlayers(space, pCount) {
             if (space.stage !== 0) return true;
             if (Array.isArray(space.playerCounts)) return space.playerCounts.includes(pCount);
@@ -566,7 +535,7 @@
                 const color = PLAYER_COLORS[p.colorIndex] || { bg: 'bg-gray-400' };
                 const dot = document.createElement('div');
                 dot.className = `w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-[10px] text-white font-bold ${color.bg}`;
-                dot.textContent = p.name.substring(1);
+                dot.textContent = p.name.substring(1); 
                 dot.title = p.uid === currentUser.uid ? "You" : "Player";
                 container.appendChild(dot);
             });
@@ -574,7 +543,7 @@
 
         function renderTopPanel() {
             document.getElementById('current-round-display').textContent = gameState.currentRound;
-
+            
             const alert = document.getElementById('harvest-alert');
             const isHarvest = HARVEST_ROUNDS.includes(gameState.currentRound);
             if (isHarvest) alert.classList.remove('hidden');
@@ -593,7 +562,7 @@
                 const el = document.createElement('div');
                 const isCurrent = (r === gameState.currentRound);
                 const isHarvest = HARVEST_ROUNDS.includes(r);
-
+                
                 let bgClass = isCurrent ? 'bg-green-600 text-white ring-2 ring-green-200' : 'bg-slate-100 text-slate-400';
                 if (isHarvest && !isCurrent) bgClass = 'bg-amber-100 text-amber-600 border border-amber-200';
                 if (isHarvest && isCurrent) bgClass = 'bg-amber-500 text-white ring-2 ring-amber-200';
@@ -620,7 +589,7 @@
                 const stageGroup = groups[stage];
                 const headerWrapper = document.createElement('div');
                 headerWrapper.className = 'col-span-full mt-2 first:mt-0';
-
+                
                 let title = stage === 0 ? '常設' : (stage === 100 ? 'オプション' : `Stage ${stage}`);
                 let colorClass = stage === 0 ? 'text-green-700' : (stage === 100 ? 'text-blue-600' : 'text-slate-500');
 
@@ -635,7 +604,7 @@
             const div = document.createElement('div');
             const isPending = space.stage === 100 && !space.enabled && space.startRound && space.startRound > gameState.currentRound;
             const isActive = space.enabled && isAvailableByPlayers(space, gameState.playerCount);
-
+            
             let borderClass = isActive ? 'border-green-200 active:border-green-400' : 'border-slate-200 border-dashed';
             if (isPending) borderClass = 'border-amber-300 border-2 bg-amber-50/30';
             const opacityClass = isActive ? 'opacity-100' : (isPending ? 'opacity-80' : 'opacity-60 bg-slate-100');
@@ -644,7 +613,7 @@
 
             // スマホ2列表示に対応したクラス (h-24 md:h-32)
             div.className = `card-transition relative rounded-xl border ${borderClass} bg-white ${shadowClass} ${opacityClass} ${cursorClass} p-2 md:p-3 flex flex-col justify-between h-24 md:h-32 select-none group overflow-hidden`;
-
+            
             if (isActive && !isSpectator) {
                 div.onclick = () => takeAll(space.id);
             }
@@ -663,13 +632,13 @@
 
             let numColorClass = 'text-slate-300';
             if (space.current > 0) {
-                if (space.current > 10) numColorClass = 'text-red-600';
-                else if (space.current >= 5) numColorClass = 'text-orange-500';
-                else numColorClass = 'text-slate-700';
+                 if (space.current > 10) numColorClass = 'text-red-600';
+                 else if (space.current >= 5) numColorClass = 'text-orange-500';
+                 else numColorClass = 'text-slate-700';
             }
 
             const disabledAttr = (!isActive || isSpectator) ? 'disabled' : '';
-
+            
             div.innerHTML = `
                 ${bgIconHtml}
                 ${toggleHtml}
@@ -732,7 +701,7 @@
                 b.classList.remove('border-green-500', 'bg-green-50');
                 b.classList.add('border-transparent');
             });
-            if (btnElement) {
+            if(btnElement) {
                 btnElement.classList.remove('border-transparent');
                 btnElement.classList.add('border-green-500', 'bg-green-50');
             }
@@ -741,5 +710,4 @@
 
     </script>
 </body>
-
 </html>
